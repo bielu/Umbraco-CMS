@@ -219,6 +219,10 @@ namespace Umbraco.Web.Editors
 
             dataType.PersistedDataType.Configuration = configuration;
 
+            var groupName = dataType.PersistedDataType.Editor.Group;
+            var folder =Services.DataTypeService.GetContainers(groupName,1).FirstOrDefault()??Services.DataTypeService.CreateContainer(-1, groupName, Security.CurrentUser.Id).Result.Entity;
+            int id = folder.Id;
+            dataType.PersistedDataType.ParentId = id;
             // save the data type
             try
             {
