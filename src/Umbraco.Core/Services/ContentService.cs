@@ -2544,7 +2544,7 @@ namespace Umbraco.Core.Services
 
             if (content.HasChildren())
             {
-                foreach (var subcontent in content.Children())
+                foreach (var subcontent in content.Ancestors())
                 {
                     UnPublishDo(subcontent, false, userId);
                 }
