@@ -21,7 +21,11 @@ using Umbraco.Cms.Core.Strings;
 using Umbraco.Cms.Infrastructure.Examine;
 using Umbraco.Cms.Infrastructure.Persistence;
 using Umbraco.Search;
+using Umbraco.Search.Configuration;
 using Umbraco.Search.Examine;
+using Umbraco.Search.Examine.Configuration;
+using Umbraco.Search.Examine.Lucene;
+using Umbraco.Search.Examine.TBD;
 using Umbraco.Search.Examine.ValueSetBuilders;
 using Umbraco.Search.Indexing.Populators;
 using Directory = Lucene.Net.Store.Directory;
@@ -185,7 +189,7 @@ public class IndexInitializer
         return mediaServiceMock.Object;
     }
 
-    public ILocalizationService GetMockLocalizationService() =>
+    public ILocalizationService? GetMockLocalizationService() =>
         Mock.Of<ILocalizationService>(x => x.GetAllLanguages() == Array.Empty<ILanguage>());
 
     public static IMediaTypeService GetMockMediaTypeService(IShortStringHelper shortStringHelper)
@@ -209,13 +213,13 @@ public class IndexInitializer
     public IProfilingLogger GetMockProfilingLogger() =>
         new ProfilingLogger(Mock.Of<ILogger<ProfilingLogger>>(), Mock.Of<IProfiler>());
 
-    public UmbracoContentIndex GetUmbracoIndexer(
+    public IUmbracoIndex<IContent> GetUmbracoIndexer(
         IHostingEnvironment hostingEnvironment,
         IRuntimeState runtimeState,
         Directory luceneDir,
-        Analyzer analyzer = null,
-        ILocalizationService languageService = null,
-        IContentValueSetValidator validator = null)
+        Analyzer? analyzer = null,
+        ILocalizationService? languageService = null,
+        IContentValueSetValidator? validator = null)
     {
         if (languageService == null)
         {
@@ -242,14 +246,12 @@ public class IndexInitializer
                 FieldDefinitions = new UmbracoFieldDefinitionCollection().toExamineFieldDefinitionCollection()
             });
 
-        var i = new UmbracoContentIndex(_loggerFactory, new LuceneIndex(  _loggerFactory,
+        var i = new UmbracoExamineLuceneIndex( _loggerFactory,
             "testIndexer",
-            options),new ContentValueSetBuilder());
+            options, new UmbracoIndexesConfiguration(new Dictionary<string, IUmbracoIndexConfiguration>()), hostingEnvironment, runtimeState);
 
-        i.IndexingError += IndexingError;
-        i.IndexOperationComplete += I_IndexOperationComplete;
 
-        return i;
+        return new UmbracoExamineIndex<IContent>(i, new ContentValueSetBuilder());
     }
 
     private void I_IndexOperationComplete(object sender, IndexOperationEventArgs e)

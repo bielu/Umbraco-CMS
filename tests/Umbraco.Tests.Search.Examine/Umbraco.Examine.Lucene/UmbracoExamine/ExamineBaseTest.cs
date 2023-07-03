@@ -42,7 +42,7 @@ public abstract class ExamineBaseTest : UmbracoIntegrationTest
     /// <returns></returns>
     protected IDisposable GetSynchronousContentIndex(
         bool publishedValuesOnly,
-        out UmbracoContentIndex index,
+        out IUmbracoIndex<IContent> index,
         out IUmbracoSearcher searcher,
         out ContentIndexPopulator contentRebuilder,
         out ContentValueSetBuilder contentValueSetBuilder,
@@ -63,7 +63,7 @@ public abstract class ExamineBaseTest : UmbracoIntegrationTest
 
         var luceneDir = new RandomIdRAMDirectory();
 
-        ContentValueSetValidator validator;
+        ContentValueSetValidator? validator;
 
         // if only published values then we'll change the validator for tests to
         // ensure we don't support protected nodes and that we
