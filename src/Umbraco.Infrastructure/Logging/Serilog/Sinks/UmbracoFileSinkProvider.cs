@@ -9,7 +9,7 @@ using Umbraco.Cms.Core.Logging;
 using Umbraco.Cms.Core.Logging.Viewer;
 
 namespace Umbraco.Cms.Infrastructure.Logging.Serilog.Sinks;
-
+//todo: this works but we need get ridoff of legacy for FileSink
 public class UmbracoFileSinkProvider : IUmbracoSinkProvider
 {
     private const int FileSizeCap = 100;
