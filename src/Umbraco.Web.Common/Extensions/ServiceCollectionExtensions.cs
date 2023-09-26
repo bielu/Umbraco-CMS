@@ -73,23 +73,6 @@ public static class ServiceCollectionExtensions
                 myOptions.RetainedFileCountLimit = args.GetValue(nameof(myOptions.RetainedFileCountLimit), myOptions.RetainedFileCountLimit);
             }
         });
-        
-        if (Log.Logger is ReloadableLogger reloadableLogger)
-            services.Configure<UmbracoFileConfiguration>(myOptions => {
-                //todo move to configuration of option settings
-                if (configuration == null)
-                {
-                    reloadableLogger.Reload(cfg =>
-                    {
-                        cfg.ReadFrom.Configuration(configuration!);
-                        return cfg;
-                    });
-                }
-                else
-                {
-                    Log.Logger = serilogConfig(new LoggerConfiguration()).CreateBootstrapLogger();
-                    throw new ArgumentNullException(nameof(configuration));
-                }
         services.AddSingleton(sp =>
         {
             var logger = new RegisteredReloadableLogger(new ReloadableLogger());
