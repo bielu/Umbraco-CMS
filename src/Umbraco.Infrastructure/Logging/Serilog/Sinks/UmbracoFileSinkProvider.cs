@@ -29,7 +29,7 @@ public class UmbracoFileSinkProvider : IUmbracoSinkProvider
 
     public void Emit(LogEvent logEvent)
     {
-
+        this.FileSink.Emit(logEvent);
     }
 
     public bool CanCheckLogsForTimePeriod(LogTimePeriod logTimePeriod)
