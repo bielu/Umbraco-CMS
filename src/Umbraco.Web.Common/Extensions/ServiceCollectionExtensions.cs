@@ -47,6 +47,14 @@ public static class ServiceCollectionExtensions
         services.TryAddSingleton(loggingConfig);
         services.TryAddSingleton<ILogEventEnricher, ApplicationIdEnricher>();
 
+        if (Log.Logger is ReloadableLogger reloadableLogger)
+        {
+            reloadableLogger.Reload((config)=>new LoggerConfiguration());
+        }
+        else
+        {
+            Log.Logger = new LoggerConfiguration().CreateBootstrapLogger();
+        }
         ///////////////////////////////////////////////
         // Runtime logger setup
         ///////////////////////////////////////////////
@@ -75,7 +83,7 @@ public static class ServiceCollectionExtensions
         });
         services.AddSingleton(sp =>
         {
-            var logger = new RegisteredReloadableLogger(new ReloadableLogger());
+            var logger = new RegisteredReloadableLogger(Log.Logger);
 
             logger.Reload(cfg =>
             {
