@@ -45,6 +45,7 @@ public static class ServiceCollectionExtensions
         var loggingDir = loggerSettings.GetAbsoluteLoggingPath(hostEnvironment);
         ILoggingConfiguration loggingConfig = new LoggingConfiguration(loggingDir);
         services.TryAddSingleton(loggingConfig);
+        services.TryAddSingleton<UmbracoSink>();
         services.TryAddSingleton<ILogEventEnricher, ApplicationIdEnricher>();
 
         if (Log.Logger is ReloadableLogger reloadableLogger)
@@ -83,7 +84,7 @@ public static class ServiceCollectionExtensions
         });
         services.AddSingleton(sp =>
         {
-            var logger = new RegisteredReloadableLogger(Log.Logger);
+            var logger = new RegisteredReloadableLogger(Log.Logger as ReloadableLogger);
 
             logger.Reload(cfg =>
             {
