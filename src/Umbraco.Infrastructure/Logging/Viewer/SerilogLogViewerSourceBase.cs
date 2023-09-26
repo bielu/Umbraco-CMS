@@ -11,7 +11,7 @@ public abstract class SerilogLogViewerSourceBase : ILogViewer
     private readonly ILogLevelLoader _logLevelLoader;
     private readonly ILogViewerConfig _logViewerConfig;
 
-    protected SerilogLogViewerSourceBase(ILogViewerConfig logViewerConfig, ILogLevelLoader logLevelLoader, ILogger serilogLog)
+    protected SerilogLogViewerSourceBase(ILogViewerConfig logViewerConfig, ILogLevelLoader logLevelLoader)
     {
         _logViewerConfig = logViewerConfig;
         _logLevelLoader = logLevelLoader;
@@ -59,6 +59,7 @@ public abstract class SerilogLogViewerSourceBase : ILogViewer
 
         return templates;
     }
+
 
     public PagedResult<LogMessage> GetLogs(
         LogTimePeriod logTimePeriod,

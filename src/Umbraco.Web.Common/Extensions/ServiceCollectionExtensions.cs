@@ -17,6 +17,7 @@ using Umbraco.Cms.Core.Extensions;
 using Umbraco.Cms.Core.Logging;
 using Umbraco.Cms.Core.Logging.Serilog;
 using Umbraco.Cms.Infrastructure.Logging.Serilog;
+using Umbraco.Cms.Infrastructure.Logging.Serilog.Sinks;
 using Umbraco.Cms.Web.Common.Hosting;
 using Umbraco.Cms.Web.Common.Logging;
 using Umbraco.Cms.Web.Common.Logging.Enrichers;
@@ -28,49 +29,6 @@ namespace Umbraco.Extensions;
 
 public static class ServiceCollectionExtensions
 {
-    /// <summary>
-    ///     Create and configure the logger
-    /// </summary>
-    [Obsolete("Use the extension method that takes an IHostEnvironment instance instead.")]
-    public static IServiceCollection AddLogger(
-        this IServiceCollection services,
-        IHostingEnvironment hostingEnvironment,
-        ILoggingConfiguration loggingConfiguration,
-        IConfiguration configuration)
-    {
-        // Create a serilog logger
-        var logger = SerilogLogger.CreateWithDefaultConfiguration(hostingEnvironment, loggingConfiguration, configuration, out UmbracoFileConfiguration umbracoFileConfig);
-        services.AddSingleton(umbracoFileConfig);
-
-        // This is nessasary to pick up all the loggins to MS ILogger.
-        Log.Logger = logger.SerilogLog;
-
-        // Wire up all the bits that serilog needs. We need to use our own code since the Serilog ext methods don't cater to our needs since
-        // we don't want to use the global serilog `Log` object and we don't have our own ILogger implementation before the HostBuilder runs which
-        // is the only other option that these ext methods allow.
-        // I have created a PR to make this nicer https://github.com/serilog/serilog-extensions-hosting/pull/19 but we'll need to wait for that.
-        // Also see : https://github.com/serilog/serilog-extensions-hosting/blob/dev/src/Serilog.Extensions.Hosting/SerilogHostBuilderExtensions.cs
-        services.AddLogging(configure =>
-        {
-            configure.AddSerilog(logger.SerilogLog);
-        });
-
-        // This won't (and shouldn't) take ownership of the logger.
-        services.AddSingleton(logger.SerilogLog);
-
-        // Registered to provide two services...
-        var diagnosticContext = new DiagnosticContext(logger.SerilogLog);
-
-        // Consumed by e.g. middleware
-        services.AddSingleton(diagnosticContext);
-
-        // Consumed by user code
-        services.AddSingleton<IDiagnosticContext>(diagnosticContext);
-        services.AddSingleton(loggingConfiguration);
-
-        return services;
-    }
-
     /// <summary>
     ///     Create and configure the logger.
     /// </summary>
@@ -86,41 +44,59 @@ public static class ServiceCollectionExtensions
 
         var loggingDir = loggerSettings.GetAbsoluteLoggingPath(hostEnvironment);
         ILoggingConfiguration loggingConfig = new LoggingConfiguration(loggingDir);
-
-        var umbracoFileConfiguration = new UmbracoFileConfiguration(configuration);
-
-        services.TryAddSingleton(umbracoFileConfiguration);
         services.TryAddSingleton(loggingConfig);
         services.TryAddSingleton<ILogEventEnricher, ApplicationIdEnricher>();
 
         ///////////////////////////////////////////////
-        // Bootstrap logger setup
-        ///////////////////////////////////////////////
-
-        Func<LoggerConfiguration, LoggerConfiguration> serilogConfig = cfg => cfg
-            .MinimalConfiguration(hostEnvironment, loggingConfig, umbracoFileConfiguration)
-            .ReadFrom.Configuration(configuration);
-
-        if (Log.Logger is ReloadableLogger reloadableLogger)
-        {
-            reloadableLogger.Reload(serilogConfig);
-        }
-        else
-        {
-            Log.Logger = serilogConfig(new LoggerConfiguration()).CreateBootstrapLogger();
-        }
-
-        ///////////////////////////////////////////////
         // Runtime logger setup
         ///////////////////////////////////////////////
+        services.Configure<UmbracoFileConfiguration>(myOptions => {
+            //todo move to configuration of option settings
+            if (configuration == null)
+            {
+                throw new ArgumentNullException(nameof(configuration));
+            }
 
+            IConfigurationSection? appSettings = configuration.GetSection("Serilog:WriteTo");
+            IConfigurationSection? umbracoFileAppSettings =
+                appSettings.GetChildren().LastOrDefault(x => x.GetValue<string>("Name") == "UmbracoFile");
+
+            if (umbracoFileAppSettings is not null)
+            {
+                IConfigurationSection? args = umbracoFileAppSettings.GetSection("Args");
+
+                myOptions.RestrictedToMinimumLevel = args.GetValue(nameof(myOptions.RestrictedToMinimumLevel),  myOptions.RestrictedToMinimumLevel);
+                myOptions.FileSizeLimitBytes = args.GetValue(nameof(myOptions.FileSizeLimitBytes),  myOptions.FileSizeLimitBytes);
+                myOptions.RollingInterval = args.GetValue(nameof( myOptions.RollingInterval), myOptions.RollingInterval);
+                myOptions.FlushToDiskInterval = args.GetValue(nameof(myOptions.FlushToDiskInterval),  myOptions.FlushToDiskInterval);
+                myOptions.RollOnFileSizeLimit = args.GetValue(nameof(myOptions.RollOnFileSizeLimit), myOptions.RollOnFileSizeLimit);
+                myOptions.RetainedFileCountLimit = args.GetValue(nameof(myOptions.RetainedFileCountLimit), myOptions.RetainedFileCountLimit);
+            }
+        });
+        
+        if (Log.Logger is ReloadableLogger reloadableLogger)
+            services.Configure<UmbracoFileConfiguration>(myOptions => {
+                //todo move to configuration of option settings
+                if (configuration == null)
+                {
+                    reloadableLogger.Reload(cfg =>
+                    {
+                        cfg.ReadFrom.Configuration(configuration!);
+                        return cfg;
+                    });
+                }
+                else
+                {
+                    Log.Logger = serilogConfig(new LoggerConfiguration()).CreateBootstrapLogger();
+                    throw new ArgumentNullException(nameof(configuration));
+                }
         services.AddSingleton(sp =>
         {
-            var logger = new RegisteredReloadableLogger(Log.Logger as ReloadableLogger);
+            var logger = new RegisteredReloadableLogger(new ReloadableLogger());
 
             logger.Reload(cfg =>
             {
-                cfg.MinimalConfiguration(hostEnvironment, loggingConfig, umbracoFileConfiguration)
+                cfg.MinimalConfiguration(sp,hostEnvironment, loggingConfig)
                     .ReadFrom.Configuration(configuration)
                     .ReadFrom.Services(sp);
 
@@ -129,7 +105,7 @@ public static class ServiceCollectionExtensions
 
             return logger;
         });
-
+        services.AddSingleton<IUmbracoSinkProvider, UmbracoFileSinkProvider>();
         services.AddSingleton<ILogger>(sp =>
         {
             ILogger logger = sp.GetRequiredService<RegisteredReloadableLogger>().Logger;

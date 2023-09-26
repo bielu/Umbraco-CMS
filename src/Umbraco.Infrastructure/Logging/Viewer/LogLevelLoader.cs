@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using Microsoft.Extensions.Options;
 using Serilog;
 using Serilog.Events;
 using Umbraco.Cms.Infrastructure.Logging.Serilog;
@@ -9,7 +10,7 @@ public class LogLevelLoader : ILogLevelLoader
 {
     private readonly UmbracoFileConfiguration _umbracoFileConfig;
 
-    public LogLevelLoader(UmbracoFileConfiguration umbracoFileConfig) => _umbracoFileConfig = umbracoFileConfig;
+    public LogLevelLoader(IOptionsMonitor<UmbracoFileConfiguration> umbracoFileConfig) => _umbracoFileConfig = umbracoFileConfig.CurrentValue;
 
     /// <summary>
     ///     Get the Serilog level values of the global minimum and the UmbracoFile one from the config file.

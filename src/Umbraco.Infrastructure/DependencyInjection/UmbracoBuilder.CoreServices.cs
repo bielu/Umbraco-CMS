@@ -44,6 +44,7 @@ using Umbraco.Cms.Infrastructure.Examine;
 using Umbraco.Cms.Infrastructure.HealthChecks;
 using Umbraco.Cms.Infrastructure.HostedServices;
 using Umbraco.Cms.Infrastructure.Install;
+using Umbraco.Cms.Infrastructure.Logging.Serilog.Sinks;
 using Umbraco.Cms.Infrastructure.Mail;
 using Umbraco.Cms.Infrastructure.Migrations;
 using Umbraco.Cms.Infrastructure.Migrations.Install;
@@ -244,11 +245,10 @@ public static partial class UmbracoBuilderExtensions
         builder.Services.AddSingleton<ILogLevelLoader, LogLevelLoader>();
         builder.SetLogViewer<SerilogJsonLogViewer>();
         builder.Services.AddSingleton<ILogViewer>(factory => new SerilogJsonLogViewer(
+            factory.GetRequiredService<IUmbracoSinkProvider>(),
             factory.GetRequiredService<ILogger<SerilogJsonLogViewer>>(),
             factory.GetRequiredService<ILogViewerConfig>(),
-            factory.GetRequiredService<ILoggingConfiguration>(),
-            factory.GetRequiredService<ILogLevelLoader>(),
-            Log.Logger));
+            factory.GetRequiredService<ILogLevelLoader>()));
 
         return builder;
     }

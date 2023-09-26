@@ -1,34 +1,14 @@
+using System.Text;
 using Microsoft.Extensions.Configuration;
 using Serilog;
 using Serilog.Events;
+using Serilog.Formatting;
+using Serilog.Formatting.Compact;
 
 namespace Umbraco.Cms.Infrastructure.Logging.Serilog;
 
 public class UmbracoFileConfiguration
 {
-    public UmbracoFileConfiguration(IConfiguration configuration)
-    {
-        if (configuration == null)
-        {
-            throw new ArgumentNullException(nameof(configuration));
-        }
-
-        IConfigurationSection? appSettings = configuration.GetSection("Serilog:WriteTo");
-        IConfigurationSection? umbracoFileAppSettings =
-            appSettings.GetChildren().LastOrDefault(x => x.GetValue<string>("Name") == "UmbracoFile");
-
-        if (umbracoFileAppSettings is not null)
-        {
-            IConfigurationSection? args = umbracoFileAppSettings.GetSection("Args");
-
-            RestrictedToMinimumLevel = args.GetValue(nameof(RestrictedToMinimumLevel), RestrictedToMinimumLevel);
-            FileSizeLimitBytes = args.GetValue(nameof(FileSizeLimitBytes), FileSizeLimitBytes);
-            RollingInterval = args.GetValue(nameof(RollingInterval), RollingInterval);
-            FlushToDiskInterval = args.GetValue(nameof(FlushToDiskInterval), FlushToDiskInterval);
-            RollOnFileSizeLimit = args.GetValue(nameof(RollOnFileSizeLimit), RollOnFileSizeLimit);
-            RetainedFileCountLimit = args.GetValue(nameof(RetainedFileCountLimit), RetainedFileCountLimit);
-        }
-    }
 
     public LogEventLevel RestrictedToMinimumLevel { get; set; } = LogEventLevel.Verbose;
 
@@ -41,6 +21,9 @@ public class UmbracoFileConfiguration
     public bool RollOnFileSizeLimit { get; set; }
 
     public int RetainedFileCountLimit { get; set; } = 31;
+    public ITextFormatter? TextFormatter { get; set; } = new CompactJsonFormatter();
+    public Encoding? Encoding { get; set; }
+    public bool Buffered { get; set; }
 
     public string GetPath(string logDirectory) =>
         Path.Combine(logDirectory, $"UmbracoTraceLog.{Environment.MachineName}..json");
